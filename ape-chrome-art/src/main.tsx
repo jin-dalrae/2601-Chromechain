@@ -1,6 +1,8 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import Main from './main_wrapper.tsx'
+// 🔥 Initialize Firebase
+import './lib/firebase'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

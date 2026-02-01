@@ -1,93 +1,205 @@
-# CHROMECHAIN
+# 🔮 CHROMECHAIN
 
-Generative 3D artifacts sculpted in the cloud. Secured by Espresso preconfirmations on ApeChain Gary Testnet.
+> **Generative 3D Chrome Art on ApeChain Gary Testnet**
 
-## Overview
+CHROMECHAIN is an interactive, generative 3D art experience where users sculpt unique digital artifacts inside a speculative San Francisco 2050 environment and mint them as on-chain assets. Built with React, Three.js, and integrated with Espresso Systems' shared sequencer for fast preconfirmation UX.
 
-CHROMECHAIN is an interactive, generative 3D art experience where users sculpt unique digital artifacts inside a speculative San Francisco 2050 environment. The system integrates Espresso Systems' shared sequencer to demonstrate fast preconfirmation (~250ms) and improved UX feedback during minting.
+![CHROMECHAIN](https://img.shields.io/badge/ApeChain-Gary_Testnet-purple?style=for-the-badge)
+![Espresso](https://img.shields.io/badge/Espresso-Sequencer-00ffcc?style=for-the-badge)
+![React](https://img.shields.io/badge/React-18-61dafb?style=for-the-badge)
+![Three.js](https://img.shields.io/badge/Three.js-3D-black?style=for-the-badge)
 
-## Tech Stack
+---
 
-- **Network:** ApeChain Gary Testnet (Chain ID: 3313939)
-- **Sequencing:** Espresso Systems Shared Sequencer
-- **Frontend:** React + Three.js + React Three Fiber
-- **Web3:** Thirdweb SDK
+## ✨ Features
 
-## Features
+| Feature | Description |
+|---------|-------------|
+| 🎨 **Shape Morphing** | Choose from Blob, Knot, Gem, or Crystal geometries |
+| 🌊 **Liquid Chrome Shader** | Dynamic reflective materials with real-time distortion |
+| 📸 **Camera Mirror Mode** | Use your webcam as a live environment texture |
+| 🎲 **Chaos Button** | Randomize all parameters for instant creativity |
+| 💾 **Save/Load Drafts** | Save your artifact to localStorage and reload later |
+| ⚡ **Espresso HUD** | Real-time sequencer status and preconfirmation feedback |
+| 🌆 **SF 2050 Environment** | Cyberpunk atmosphere with neon lighting and volumetric fog |
 
-### Sculpting Controls
-- **Shape Morph** - Blob, Knot, Gem, Crystal
-- **Sculpting** - Radius, Knot P/Q parameters, Detail level
-- **Environment** - SF 2050, Night, Studio presets
-- **Fluidity & Tint** - Distortion amount, Color picker
-- **Material Presets** - Chrome, Gold, Plasma
+---
 
-### Mirror Mode
-Live camera input used as environment reflection texture (1s pulse sync).
+## 🛠️ Tech Stack
 
-### Espresso HUD
-Real-time display of sequencer status, preconfirmation state, and latency (~248ms).
+- **Frontend**: React 18 + TypeScript
+- **3D Rendering**: Three.js + React Three Fiber + Drei
+- **Web3**: Thirdweb SDK
+- **Network**: ApeChain Gary Testnet (Chain ID: 3313939)
+- **Sequencer**: Espresso Systems Shared Sequencer
+- **Hosting**: Firebase Hosting
+- **Build Tool**: Vite
 
-### Randomizer
-One-click chaos button that randomizes all sculpting parameters.
+---
 
-## Getting Started
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Node.js 18+ 
+- npm or pnpm
+- A Web3 wallet (MetaMask, etc.)
+
+### Installation
 
 ```bash
+# Clone the repository
+git clone <your-repo-url>
+cd ape-chrome-art
+
 # Install dependencies
 npm install
 
-# Start dev server
+# Start development server
 npm run dev
+```
 
-# Build for production
+The app will be running at `http://localhost:5173`
+
+---
+
+## 🎮 Usage
+
+### Sculpting Your Artifact
+
+1. **Connect Wallet** - Click the connect button (top right) to connect to ApeChain Gary Testnet
+2. **Choose Shape** - Select from Blob, Knot, Gem, or Crystal
+3. **Adjust Parameters**:
+   - **Radius** - Size of your artifact
+   - **P/Q Values** - Knot complexity (only for Knot shape)
+   - **Segments** - Geometry detail level
+   - **Fluidity** - Distortion amount
+   - **Tint** - Color overlay
+4. **Environment** - Switch between SF 2050, Night, or Studio modes
+5. **Camera Mode** - Enable to use your webcam as environment reflection
+
+### Saving Your Work
+
+| Action | Description |
+|--------|-------------|
+| **💾 SAVE** | Saves current configuration to browser localStorage |
+| **📂 LOAD** | Restores your last saved draft |
+| **🗑️ CLEAR** | Deletes saved draft from storage |
+
+Your artifact configuration persists across browser sessions!
+
+---
+
+## 🏗️ Development
+
+### Project Structure
+
+```
+ape-chrome-art/
+├── src/
+│   ├── App.tsx              # Main application component
+│   ├── main.tsx             # Entry point
+│   ├── main_wrapper.tsx     # Thirdweb provider wrapper
+│   ├── components/
+│   │   ├── AssetGallery.tsx
+│   │   ├── ModifiedAssets.tsx
+│   │   └── ShinyObject.tsx
+│   └── lib/
+│       └── firebase.ts      # Firebase configuration
+├── firebase.json            # Firebase Hosting config
+├── .firebaserc              # Firebase project config
+├── vite.config.ts           # Vite configuration
+└── package.json
+```
+
+### Commands
+
+```bash
+# Development
+npm run dev          # Start dev server with hot reload
+
+# Build
+npm run build        # TypeScript check + production build
+
+# Preview
+npm run preview      # Preview production build locally
+```
+
+---
+
+## 🚢 Deployment
+
+### Firebase Hosting
+
+```bash
+# 1. Install Firebase SDK (if not already)
+npm install firebase
+
+# 2. Build for production
 npm run build
+
+# 3. Install Firebase CLI globally
+npm install -g firebase-tools
+
+# 4. Login to Firebase
+firebase login
+
+# 5. Deploy to hosting
+firebase deploy --only hosting
 ```
 
-## Project Structure
+**Live URLs after deployment:**
+- https://chromechain-a7902.web.app
+- https://chromechain-a7902.firebaseapp.com
 
-```
-src/
-├── main.tsx           # Entry point
-├── main_wrapper.tsx   # Landing page + ThirdwebProvider
-├── App.tsx            # Main sculpting experience
-└── components/
-    └── ShinyObject.tsx
-```
+---
 
-## Configuration
+## ⛓️ Network Configuration
 
-Thirdweb Client ID is configured in `src/App.tsx`. Update if needed:
+### ApeChain Gary Testnet
 
-```typescript
-const client = createThirdwebClient({
-  clientId: "your-client-id",
-});
-```
+| Property | Value |
+|----------|-------|
+| **Network Name** | ApeChain Gary Testnet |
+| **Chain ID** | 3313939 |
+| **RPC URL** | `https://apechain-tnet.rpc.caldera.xyz/http` |
+| **Currency** | APE |
+| **Decimals** | 18 |
 
-## Network Details
+### Adding to MetaMask
 
-| Parameter | Value |
-|-----------|-------|
-| Network | ApeChain Gary Testnet |
-| Chain ID | 3313939 |
-| RPC | https://apechain-tnet.rpc.caldera.xyz/http |
-| Currency | APE |
-| Faucet | https://apechain-tnet.hub.caldera.xyz/ |
+1. Open MetaMask → Networks → Add Network
+2. Enter the configuration above
+3. Save and switch to the network
 
-## Roadmap
+---
 
-- [x] 3D Sculpting Engine
-- [x] Espresso HUD
-- [x] Camera Mirror Mode
-- [x] Generative Randomizer
-- [x] Landing Page
-- [ ] NFT Minting
-- [ ] Provenance Feed
+## 🤝 Contributing
 
-## Credits
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-**Project Lead:** Luc (Stanford)
-**Creative Direction:** Rae
+---
 
-Built for Espresso x ApeChain Hackathon.
+## 📄 License
+
+MIT License - feel free to use this project for your own creative experiments!
+
+---
+
+## 🙏 Acknowledgments
+
+- **ApeChain** - For the Gary Testnet infrastructure
+- **Espresso Systems** - For the shared sequencer technology
+- **Thirdweb** - For seamless Web3 integration
+- **React Three Fiber** - For making 3D in React beautiful
+
+---
+
+<p align="center">
+  <strong>Built with 💝 for the ApeChain Hackathon</strong><br>
+  <em>Project Lead: Luc (Stanford) | Creative Direction: Rae</em>
+</p>
