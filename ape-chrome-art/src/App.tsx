@@ -1,10 +1,161 @@
 import React, { useState, Suspense, useEffect, useMemo, useRef, useCallback } from "react";
-import { createThirdwebClient, defineChain, getContract, prepareContractCall } from "thirdweb";
+import { createThirdwebClient, defineChain, getContract, prepareContractCall, estimateGas } from "thirdweb";
 import { ConnectButton, useActiveAccount, useActiveWalletChain, useSendTransaction } from "thirdweb/react";
 import { mintTo, getOwnedNFTs } from "thirdweb/extensions/erc1155";
 import { Canvas, useThree } from "@react-three/fiber";
 import { Environment, OrbitControls, Stars, Float, MeshDistortMaterial, ContactShadows } from "@react-three/drei";
 import * as THREE from "three";
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🎨 GENERATIVE SVG IMAGE - Creates unique on-chain art for each NFT
+// ═══════════════════════════════════════════════════════════════════════════════
+const generateArtifactSVG = (params: {
+  shape: string;
+  color: string;
+  radius: number;
+  distort: number;
+  p: number;
+  q: number;
+  env: string;
+}): string => {
+  const { shape, color, radius, distort, p, q, env } = params;
+
+  // Generate unique gradient based on color
+  const hexToRgb = (hex: string) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : { r: 255, g: 255, b: 255 };
+  };
+
+  const rgb = hexToRgb(color);
+  const secondaryColor = `rgb(${Math.max(0, rgb.r - 50)}, ${Math.max(0, rgb.g - 50)}, ${Math.max(0, rgb.b - 50)})`;
+  const glowColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.6)`;
+
+  // Background based on environment
+  const bgGradient = env === 'night'
+    ? 'url(#nightBg)'
+    : env === 'studio'
+      ? 'url(#studioBg)'
+      : 'url(#cityBg)';
+
+  // Shape-specific SVG paths
+  const getShapePath = () => {
+    const scale = 40 + radius * 20;
+    const cx = 200, cy = 200;
+
+    switch (shape) {
+      case 'blob':
+        // Organic blob shape with distortion
+        const points = 8;
+        let path = '';
+        for (let i = 0; i <= points; i++) {
+          const angle = (i / points) * Math.PI * 2;
+          const distortAmount = 1 + Math.sin(angle * (p || 2)) * distort * 5;
+          const r = scale * distortAmount;
+          const x = cx + Math.cos(angle) * r;
+          const y = cy + Math.sin(angle) * r;
+          path += (i === 0 ? 'M' : 'Q') + ` ${x},${y} `;
+          if (i > 0 && i < points) {
+            const midAngle = angle + Math.PI / points;
+            const midR = scale * (1 + Math.sin(midAngle * (q || 3)) * distort * 3);
+            path += `${cx + Math.cos(midAngle) * midR},${cy + Math.sin(midAngle) * midR} `;
+          }
+        }
+        return path + 'Z';
+
+      case 'gem':
+        // Octahedron-like gem
+        return `M${cx},${cy - scale} L${cx + scale * 0.7},${cy} L${cx},${cy + scale} L${cx - scale * 0.7},${cy} Z`;
+
+      case 'crystal':
+        // Icosahedron-inspired crystal
+        const s = scale * 0.8;
+        return `M${cx},${cy - s} L${cx + s * 0.6},${cy - s * 0.3} L${cx + s * 0.8},${cy + s * 0.4} L${cx + s * 0.3},${cy + s} L${cx - s * 0.3},${cy + s} L${cx - s * 0.8},${cy + s * 0.4} L${cx - s * 0.6},${cy - s * 0.3} Z`;
+
+      case 'knot':
+      default:
+        // Torus knot approximation
+        let knotPath = '';
+        const knotPoints = 60;
+        for (let i = 0; i <= knotPoints; i++) {
+          const t = (i / knotPoints) * Math.PI * 2 * p;
+          const r = (scale * 0.5) * (2 + Math.cos((q || 3) * t));
+          const x = cx + r * Math.cos(t);
+          const y = cy + r * Math.sin(t) * 0.6;
+          knotPath += (i === 0 ? 'M' : 'L') + ` ${x},${y}`;
+        }
+        return knotPath;
+    }
+  };
+
+  const shapePath = getShapePath();
+
+  const svg = `
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <defs>
+    <linearGradient id="cityBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0a1a"/>
+      <stop offset="50%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#0f0f23"/>
+    </linearGradient>
+    <linearGradient id="nightBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#000814"/>
+      <stop offset="100%" style="stop-color:#001d3d"/>
+    </linearGradient>
+    <linearGradient id="studioBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a1a"/>
+      <stop offset="100%" style="stop-color:#2d2d2d"/>
+    </linearGradient>
+    <linearGradient id="shapeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:${color}"/>
+      <stop offset="100%" style="stop-color:${secondaryColor}"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="chrome">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="blur"/>
+      <feSpecularLighting in="blur" surfaceScale="5" specularConstant="1" specularExponent="30" lighting-color="${color}" result="specOut">
+        <fePointLight x="200" y="100" z="200"/>
+      </feSpecularLighting>
+      <feComposite in="specOut" in2="SourceAlpha" operator="in" result="specOut"/>
+      <feComposite in="SourceGraphic" in2="specOut" operator="arithmetic" k1="0" k2="1" k3="1" k4="0"/>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="400" fill="${bgGradient}"/>
+  
+  <!-- Stars -->
+  ${Array.from({ length: 30 }, (_, i) =>
+    `<circle cx="${Math.random() * 400}" cy="${Math.random() * 400}" r="${Math.random() * 1.5}" fill="white" opacity="${0.3 + Math.random() * 0.5}"/>`
+  ).join('')}
+  
+  <!-- Glow Effect -->
+  <path d="${shapePath}" fill="${glowColor}" filter="url(#glow)" opacity="0.5"/>
+  
+  <!-- Main Shape -->
+  <path d="${shapePath}" fill="url(#shapeGrad)" filter="url(#chrome)" stroke="${color}" stroke-width="1"/>
+  
+  <!-- Chrome Highlight -->
+  <path d="${shapePath}" fill="none" stroke="white" stroke-width="0.5" opacity="0.3"/>
+  
+  <!-- CHROMECHAIN Branding -->
+  <text x="200" y="380" text-anchor="middle" fill="${color}" font-family="system-ui, sans-serif" font-size="12" font-weight="bold" opacity="0.7">CHROMECHAIN</text>
+</svg>`;
+
+  // Encode as base64 data URI
+  return `data:image/svg+xml;base64,${btoa(svg)}`;
+};
+
+import { client, apeMainnet, getContractForChain } from "./constants";
 
 // ApeChain Gary Testnet (for display/environment)
 const garyTestnet = defineChain({
@@ -19,29 +170,6 @@ const curtisTestnet = defineChain({
   rpc: "https://curtis.rpc.caldera.xyz/http",
   nativeCurrency: { name: "ApeCoin", symbol: "APE", decimals: 18 },
 });
-
-// ApeChain Mainnet (for NFT minting - production)
-const apeMainnet = defineChain({
-  id: 33139,
-  rpc: "https://apechain.calderachain.xyz/http",
-  nativeCurrency: { name: "ApeCoin", symbol: "APE", decimals: 18 },
-});
-
-const client = createThirdwebClient({
-  clientId: "a791184d868d15f04f812d872353a887",
-});
-
-// NFT Contract Address on ApeChain
-const NFT_CONTRACT_ADDRESS = "0x1745c93AE2b21867EF8185e5C9B95c8886734DCD";
-
-// Helper to get contract for ApeChain Mainnet
-const getContractForChain = (chainId: number) => {
-  return getContract({
-    address: NFT_CONTRACT_ADDRESS,
-    chain: apeMainnet,
-    client,
-  });
-};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 💾 ARTIFACT STORAGE - Save/Load System (Local Gallery)
@@ -623,6 +751,11 @@ export default function App() {
   const activeChain = useActiveWalletChain();
   const { mutate: sendTransaction, isPending: isMinting } = useSendTransaction();
 
+  // 📊 Transaction tracking state
+  const [lastTxHash, setLastTxHash] = useState<string | null>(null);
+  const [estimatedGas, setEstimatedGas] = useState<string | null>(null);
+  const [isEstimatingGas, setIsEstimatingGas] = useState(false);
+
   // 🖼️ Save to Gallery handler
   const handleSaveToGallery = useCallback(() => {
     const success = saveToGallery({
@@ -652,6 +785,49 @@ export default function App() {
     setShowBg(artifact.showBg);
     setActiveTab("studio");
     setToast({ message: "📂 SHAPE LOADED", type: "success" });
+  }, []);
+
+  // 📸 Capture canvas screenshot as compressed base64 JPEG data URL
+  const captureCanvasSnapshot = useCallback((): string | null => {
+    try {
+      // Find the Three.js canvas element
+      const sourceCanvas = document.querySelector('canvas');
+      if (!sourceCanvas) {
+        console.warn("Canvas not found for snapshot");
+        return null;
+      }
+
+      // Create a tiny canvas for on-chain storage (100x100, low quality = ~5-10KB)
+      const targetSize = 100;
+      const resizedCanvas = document.createElement('canvas');
+      resizedCanvas.width = targetSize;
+      resizedCanvas.height = targetSize;
+      const ctx = resizedCanvas.getContext('2d');
+
+      if (!ctx) {
+        console.warn("Could not get 2d context");
+        return null;
+      }
+
+      // Calculate cropping to get a square from the center of the source
+      const sourceWidth = sourceCanvas.width;
+      const sourceHeight = sourceCanvas.height;
+      const minDim = Math.min(sourceWidth, sourceHeight);
+      const sx = (sourceWidth - minDim) / 2;
+      const sy = (sourceHeight - minDim) / 2;
+
+      // Draw the cropped and resized image
+      ctx.drawImage(sourceCanvas, sx, sy, minDim, minDim, 0, 0, targetSize, targetSize);
+
+      // Use JPEG with 0.4 quality for minimal file size (~3-8KB)
+      const dataUrl = resizedCanvas.toDataURL('image/jpeg', 0.4);
+
+      console.log(`Snapshot size: ~${Math.round(dataUrl.length / 1024)}KB`);
+      return dataUrl;
+    } catch (err) {
+      console.error("Failed to capture canvas snapshot:", err);
+      return null;
+    }
   }, []);
 
   const presets = {
@@ -712,7 +888,7 @@ export default function App() {
     setToast({ message: "🗑️ DRAFT CLEARED", type: "info" });
   }, []);
 
-  // 🎨 Mint Chrome Artifact
+  // 🎨 Mint Chrome Artifact with Gas Estimation, Image, and TX Hash
   const handleMint = useCallback(async () => {
     if (!account) {
       setToast({ message: "CONNECT WALLET FIRST", type: "error" });
@@ -731,19 +907,49 @@ export default function App() {
     }
 
     try {
-      setToast({ message: "⏳ MINTING ON APECHAIN...", type: "info" });
+      // Clear previous transaction hash
+      setLastTxHash(null);
+      setEstimatedGas(null);
 
       // Get contract for ApeChain mainnet
       const contract = getContractForChain(33139);
 
-      // Generate artifact metadata
+      // 📸 Capture canvas snapshot as the NFT image
+      setToast({ message: "📸 CAPTURING ARTIFACT SNAPSHOT...", type: "info" });
+
+      // Small delay to ensure the canvas is fully rendered
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const canvasSnapshot = captureCanvasSnapshot();
+      console.log("Canvas snapshot captured:", canvasSnapshot ? `${Math.round(canvasSnapshot.length / 1024)}KB` : "failed");
+
+      // Use snapshot if available, fallback to SVG
+      const artifactImage = canvasSnapshot || generateArtifactSVG({
+        shape,
+        color,
+        radius,
+        distort,
+        p,
+        q,
+        env,
+      });
+
+      if (canvasSnapshot) {
+        setToast({ message: "📸 SNAPSHOT CAPTURED!", type: "success" });
+      } else {
+        setToast({ message: "⚠️ USING FALLBACK SVG...", type: "info" });
+      }
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Generate artifact metadata with image
       const artifactName = `Chrome Artifact #${Date.now()}`;
       const artifactDescription = `A generative chrome artifact sculpted in SF 2050. Shape: ${shape.toUpperCase()}, Color: ${color}, Distort: ${distort.toFixed(3)}`;
 
-      // Create metadata JSON and encode as data URI (bypasses IPFS upload)
+      // Create metadata JSON with image included
       const metadata = {
         name: artifactName,
         description: artifactDescription,
+        image: artifactImage,  // Canvas snapshot (PNG) or fallback SVG
         attributes: [
           { trait_type: "Shape", value: shape },
           { trait_type: "Color", value: color },
@@ -757,32 +963,83 @@ export default function App() {
       };
 
       // Encode metadata as base64 data URI (no IPFS needed)
-      const metadataUri = `data:application/json;base64,${btoa(JSON.stringify(metadata))}`;
+      const metadataJson = JSON.stringify(metadata);
 
-      // Create the mint transaction with URI string instead of object
+      // Convert to base64 safely (handles large strings)
+      const uint8Array = new TextEncoder().encode(metadataJson);
+      let binary = '';
+      const chunkSize = 8192;
+      for (let i = 0; i < uint8Array.length; i += chunkSize) {
+        const chunk = uint8Array.slice(i, i + chunkSize);
+        binary += String.fromCharCode(...chunk);
+      }
+      const base64 = btoa(binary);
+      const metadataUri = `data:application/json;base64,${base64}`;
+
+      // Log metadata size for debugging
+      const imageSizeKB = Math.round(artifactImage.length / 1024);
+      const metadataSizeKB = Math.round(metadataUri.length / 1024);
+      console.log(`Image size: ~${imageSizeKB}KB`);
+      console.log(`Metadata URI size: ~${metadataSizeKB}KB`);
+
+      if (metadataSizeKB > 50) {
+        console.warn(`Large metadata (${metadataSizeKB}KB) - may fail or cost high gas`);
+      }
+
+      // Create the mint transaction
       const transaction = mintTo({
         contract,
         to: account.address,
-        nft: metadataUri,  // Pass URI string directly - no IPFS upload
+        nft: metadataUri,
         supply: BigInt(1),
       });
 
-      // Send the transaction
+      // ⛽ Estimate gas before minting
+      setToast({ message: "⛽ ESTIMATING GAS...", type: "info" });
+      setIsEstimatingGas(true);
+
+      try {
+        const gasEstimate = await estimateGas({
+          transaction,
+          account,
+        });
+        const gasString = gasEstimate.toString();
+        setEstimatedGas(gasString);
+        setToast({ message: `⛽ EST. GAS: ${Number(gasString).toLocaleString()} units`, type: "info" });
+
+        // Small delay to show gas estimate
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (gasError) {
+        console.warn("Gas estimation failed, proceeding anyway:", gasError);
+        setToast({ message: "⚠️ GAS EST. FAILED - PROCEEDING...", type: "info" });
+      } finally {
+        setIsEstimatingGas(false);
+      }
+
+      // 🚀 Send the transaction
+      setToast({ message: "⏳ MINTING ON APECHAIN...", type: "info" });
+
       sendTransaction(transaction, {
-        onSuccess: (result) => {
+        onSuccess: (result: { transactionHash: string }) => {
+          const txHash = result.transactionHash;
+          setLastTxHash(txHash);
           setToast({ message: "✨ ARTIFACT MINTED!", type: "success" });
           console.log("Mint success:", result);
+          console.log("Transaction hash:", txHash);
         },
-        onError: (error) => {
-          console.error("Mint error:", error);
-          setToast({ message: "❌ MINT FAILED", type: "error" });
+        onError: (error: any) => {
+          console.error("Mint error details:", JSON.stringify(error, null, 2));
+          console.error("Mint error object:", error);
+          const errorMsg = error?.message || error?.reason || error?.shortMessage || String(error);
+          setToast({ message: `❌ MINT FAILED: ${errorMsg.slice(0, 50)}`, type: "error" });
         },
       });
     } catch (error) {
       console.error("Mint preparation error:", error);
+      setIsEstimatingGas(false);
       setToast({ message: "❌ MINT FAILED", type: "error" });
     }
-  }, [account, activeChain, shape, color, radius, distort, p, q, env, sendTransaction]);
+  }, [account, activeChain, shape, color, radius, distort, p, q, env, sendTransaction, captureCanvasSnapshot]);
 
   return (
     <main style={{ height: "100vh", width: "100vw", background: "#000", color: "white", margin: 0, overflow: "hidden", fontFamily: "system-ui, sans-serif" }}>
@@ -1037,7 +1294,7 @@ export default function App() {
             <p style={{ margin: 0, opacity: 0.6, fontSize: "0.8rem", letterSpacing: "2px" }}>APECHAIN GARY // ESPRESSO ACTIVE</p>
           </div>
 
-          <Canvas camera={{ position: [0, 0, 5], fov: 50 }}>
+          <Canvas camera={{ position: [0, 0, 5], fov: 50 }} gl={{ preserveDrawingBuffer: true }}>
             <Suspense fallback={null}>
               <SnapshotBackground isActive={useSnapshots} env={env} showBg={showBg} />
             </Suspense>
@@ -1054,24 +1311,83 @@ export default function App() {
             <OrbitControls enableZoom={false} />
           </Canvas>
 
-          <div style={{ position: "absolute", bottom: 40, width: "100%", display: "flex", justifyContent: "center", zIndex: 10 }}>
+          <div style={{ position: "absolute", bottom: 40, width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", zIndex: 10 }}>
+            {/* Gas Estimate Display */}
+            {(isEstimatingGas || estimatedGas) && (
+              <div style={{
+                background: "rgba(0, 10, 25, 0.9)",
+                padding: "8px 20px",
+                borderRadius: "20px",
+                border: "1px solid rgba(0, 255, 204, 0.3)",
+                fontSize: "11px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}>
+                <span style={{ color: "#00ffcc" }}>⛽</span>
+                {isEstimatingGas ? (
+                  <span style={{ color: "#888" }}>Estimating gas...</span>
+                ) : (
+                  <span style={{ color: "#fff" }}>
+                    Est. Gas: <span style={{ color: "#00ffcc", fontWeight: "bold" }}>{Number(estimatedGas).toLocaleString()}</span> units
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Transaction Hash Display */}
+            {lastTxHash && (
+              <a
+                href={`https://apescan.io/tx/${lastTxHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  background: "rgba(0, 255, 136, 0.15)",
+                  padding: "10px 20px",
+                  borderRadius: "20px",
+                  border: "1px solid rgba(0, 255, 136, 0.4)",
+                  fontSize: "11px",
+                  color: "#00ff88",
+                  textDecoration: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "rgba(0, 255, 136, 0.25)";
+                  e.currentTarget.style.transform = "scale(1.02)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "rgba(0, 255, 136, 0.15)";
+                  e.currentTarget.style.transform = "scale(1)";
+                }}
+              >
+                <span>✨</span>
+                <span>TX: {lastTxHash.slice(0, 8)}...{lastTxHash.slice(-6)}</span>
+                <span style={{ opacity: 0.6 }}>→</span>
+                <span style={{ textDecoration: "underline" }}>View on ApeScan</span>
+              </a>
+            )}
+
+            {/* Mint Button */}
             <button
               onClick={handleMint}
-              disabled={isMinting}
+              disabled={isMinting || isEstimatingGas}
               style={{
                 padding: "16px 50px",
                 borderRadius: "50px",
                 border: "1px solid #fff",
-                background: isMinting ? "rgba(0,255,204,0.2)" : "rgba(0,0,0,0.9)",
+                background: (isMinting || isEstimatingGas) ? "rgba(0,255,204,0.2)" : "rgba(0,0,0,0.9)",
                 color: "#fff",
                 fontWeight: "bold",
-                cursor: isMinting ? "wait" : "pointer",
+                cursor: (isMinting || isEstimatingGas) ? "wait" : "pointer",
                 letterSpacing: "4px",
-                opacity: isMinting ? 0.7 : 1,
+                opacity: (isMinting || isEstimatingGas) ? 0.7 : 1,
                 transition: "all 0.2s ease",
               }}
             >
-              {isMinting ? "⏳ MINTING..." : "MINT CHROME ARTIFACT"}
+              {isEstimatingGas ? "⛽ ESTIMATING..." : isMinting ? "⏳ MINTING..." : "MINT CHROME ARTIFACT"}
             </button>
           </div>
         </>

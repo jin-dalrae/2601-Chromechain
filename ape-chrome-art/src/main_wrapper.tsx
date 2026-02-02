@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ThirdwebProvider } from "thirdweb/react";
 import App from "./App";
+import GalleryPage from "./GalleryPage";
 
 const TerminalLog = () => {
   const [logs, setLogs] = useState([
@@ -28,8 +29,8 @@ const TerminalLog = () => {
   }, []);
 
   return (
-    <div style={{ 
-      fontFamily: "monospace", fontSize: "10px", color: "#00ffcc", 
+    <div style={{
+      fontFamily: "monospace", fontSize: "10px", color: "#00ffcc",
       background: "rgba(0,0,0,0.8)", padding: "15px", borderRadius: "4px",
       border: "1px solid rgba(0, 255, 204, 0.2)", height: "120px", overflowY: "auto",
       display: "flex", flexDirection: "column", gap: "4px", opacity: 0.8
@@ -43,8 +44,14 @@ const TerminalLog = () => {
   );
 };
 
-const StatCard = ({ label, value, sub }) => (
-  <div style={{ 
+interface StatCardProps {
+  label: string;
+  value: string;
+  sub: string;
+}
+
+const StatCard = ({ label, value, sub }: StatCardProps) => (
+  <div style={{
     background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)",
     padding: "15px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "5px"
   }}>
@@ -54,7 +61,12 @@ const StatCard = ({ label, value, sub }) => (
   </div>
 );
 
-const LandingPage = ({ onEnter }) => {
+interface LandingPageProps {
+  onEnter: () => void;
+  onGallery: () => void;
+}
+
+const LandingPage = ({ onEnter, onGallery }: LandingPageProps) => {
   return (
     <div style={{
       height: "100vh", width: "100vw", background: "#050505",
@@ -64,8 +76,8 @@ const LandingPage = ({ onEnter }) => {
       backgroundSize: "40px 40px"
     }}>
       {/* Header Bar */}
-      <div style={{ 
-        height: "50px", borderBottom: "1px solid rgba(255,255,255,0.1)", 
+      <div style={{
+        height: "50px", borderBottom: "1px solid rgba(255,255,255,0.1)",
         display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 40px",
         background: "rgba(0,0,0,0.5)", backdropFilter: "blur(10px)"
       }}>
@@ -78,23 +90,23 @@ const LandingPage = ({ onEnter }) => {
       </div>
 
       <div style={{ flex: 1, display: "flex", padding: "60px", gap: "60px", maxWidth: "1400px", margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
-        
+
         {/* Left Column: Title & CTA */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
           <div style={{ fontSize: "12px", color: "#00ffcc", letterSpacing: "4px", marginBottom: "10px", border: "1px solid #00ffcc", width: "fit-content", padding: "4px 8px", borderRadius: "4px" }}>
             HACKATHON BUILD 001
           </div>
           <h1 style={{ fontSize: "80px", fontWeight: "900", lineHeight: "0.9", margin: "20px 0", letterSpacing: "-2px", textShadow: "0 0 40px rgba(0,255,204,0.2)" }}>
-            CHROME<br/>CHAIN
+            CHROME<br />CHAIN
           </h1>
           <p style={{ fontSize: "16px", lineHeight: "1.6", opacity: 0.7, maxWidth: "500px", marginBottom: "40px" }}>
             The artifacts of 2050 are not static. They are liquid, reactive, and secured by the speed of light.
-            <br/><br/>
+            <br /><br />
             Enter the studio to sculpt generative geometry on ApeChain, powered by Espresso preconfirmations.
           </p>
 
           <div style={{ display: "flex", gap: "20px" }}>
-            <button 
+            <button
               onClick={onEnter}
               style={{
                 padding: "18px 40px", background: "#00ffcc", color: "black",
@@ -104,13 +116,24 @@ const LandingPage = ({ onEnter }) => {
             >
               INITIALIZE STUDIO
             </button>
-            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", fontSize: "10px", fontFamily: "monospace", gap: "2px", opacity: 0.6 }}>
-              <div>latency: 24ms</div>
-              <div>fps: 60</div>
-            </div>
+            <button
+              onClick={onGallery}
+              style={{
+                padding: "18px 40px", background: "transparent", color: "#00ffcc",
+                border: "1px solid #00ffcc", borderRadius: "2px", fontSize: "14px", fontWeight: "900",
+                letterSpacing: "2px", cursor: "pointer"
+              }}
+            >
+              VIEW GALLERY
+            </button>
           </div>
 
-          <div style={{ marginTop: "60px" }}>
+          <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", fontSize: "10px", fontFamily: "monospace", gap: "2px", opacity: 0.6, marginTop: "20px" }}>
+            <div>latency: 24ms</div>
+            <div>fps: 60</div>
+          </div>
+
+          <div style={{ marginTop: "40px" }}>
             <TerminalLog />
           </div>
         </div>
@@ -124,7 +147,7 @@ const LandingPage = ({ onEnter }) => {
             <StatCard label="SYNC" value="Active" sub="Snapshot Mirroring" />
           </div>
 
-          <div style={{ 
+          <div style={{
             background: "linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0) 100%)",
             border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", padding: "30px",
             display: "flex", flexDirection: "column", gap: "20px"
@@ -132,7 +155,7 @@ const LandingPage = ({ onEnter }) => {
             <div style={{ fontSize: "14px", fontWeight: "bold", borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: "10px" }}>
               SYSTEM CAPABILITIES
             </div>
-            
+
             {[
               { title: "Generative Sculpting", desc: "Real-time mesh distortion & topology modification." },
               { title: "Visual Mirroring", desc: "Local camera feed integration for dynamic environment mapping." },
@@ -155,19 +178,37 @@ const LandingPage = ({ onEnter }) => {
 };
 
 export default function Main() {
-  const [entered, setEntered] = useState(false);
+  const [view, setView] = useState<"landing" | "app" | "gallery">("landing");
 
   return (
     <ThirdwebProvider>
-      {!entered ? (
-        <LandingPage onEnter={() => setEntered(true)} />
-      ) : (
+      {view === "landing" && (
+        <LandingPage
+          onEnter={() => setView("app")}
+          onGallery={() => setView("gallery")}
+        />
+      )}
+
+      {view === "app" && (
         <div style={{ animation: "slideUp 0.8s cubic-bezier(0.2, 1, 0.3, 1)" }}>
           <App />
           <style>{`
             @keyframes slideUp {
               from { opacity: 0; transform: translateY(20px); filter: blur(5px); }
               to { opacity: 1; transform: translateY(0); filter: blur(0); }
+            }
+          `}</style>
+          {/* Back button for App view could be added inside App if needed, but for now browser refresh is fine or we add it later */}
+        </div>
+      )}
+
+      {view === "gallery" && (
+        <div style={{ animation: "fadeIn 0.5s ease" }}>
+          <GalleryPage onBack={() => setView("landing")} />
+          <style>{`
+            @keyframes fadeIn {
+              from { opacity: 0; }
+              to { opacity: 1; }
             }
           `}</style>
         </div>
