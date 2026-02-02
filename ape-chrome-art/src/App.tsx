@@ -819,8 +819,8 @@ export default function App() {
       // Draw the cropped and resized image
       ctx.drawImage(sourceCanvas, sx, sy, minDim, minDim, 0, 0, targetSize, targetSize);
 
-      // Use JPEG with 0.4 quality for minimal file size (~3-8KB)
-      const dataUrl = resizedCanvas.toDataURL('image/jpeg', 0.4);
+      // Use PNG (might work better than JPEG for encoding)
+      const dataUrl = resizedCanvas.toDataURL('image/png');
 
       console.log(`Snapshot size: ~${Math.round(dataUrl.length / 1024)}KB`);
       return dataUrl;
@@ -993,6 +993,12 @@ export default function App() {
         nft: metadataUri,
         supply: BigInt(1),
       });
+
+      // Debug: log transaction details
+      console.log("Transaction contract address:", contract.address);
+      console.log("Minting to address:", account.address);
+      console.log("MetadataUri length:", metadataUri.length);
+      console.log("MetadataUri preview:", metadataUri.substring(0, 100) + "...");
 
       // ⛽ Estimate gas before minting
       setToast({ message: "⛽ ESTIMATING GAS...", type: "info" });
